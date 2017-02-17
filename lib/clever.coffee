@@ -96,7 +96,7 @@ module.exports = (auth, url_base='https://api.clever.com', options={}) ->
       opts =
         method: 'get'
         uri: @_url
-        qs: _({where: @_conditions}).extend @_options
+        qs: if !_.isEmpty @_conditions then _({where: @_conditions}).extend @_options
         json: true
         ca: certs
       _(opts).extend(headers: options.headers) if options.headers
@@ -133,6 +133,12 @@ module.exports = (auth, url_base='https://api.clever.com', options={}) ->
       throw new Error "Could not get type from uri: #{uri}, #{JSON.stringify klasses, undefined, 2}" if not Klass
       Klass
 
+    @_path_to_class: (path) ->
+      klasses = _(clever).filter (val, key) -> val.path? # Filter out properties that aren't resources (e.g. api_path)
+      Klass = _(klasses).find (Klass) -> path.match new RegExp "^#{Klass.path}"
+      throw new Error "Could not get type from path: #{path}, #{JSON.stringify klasses, undefined, 2}" if not Klass
+      Klass
+
     @find: (conditions, fields, find_options, cb) ->
       [conditions, fields, find_options, cb] = @_process_args conditions, fields, find_options, cb
       q = new Query "#{clever.url_base}#{@path}", conditions, find_options
@@ -141,8 +147,12 @@ module.exports = (auth, url_base='https://api.clever.com', options={}) ->
         q.links = body.links
         if body.data
           results = _(body.data).map (doc) =>
-            Klass = @_uri_to_class doc.uri
-            new Klass doc.data, doc.uri, doc.links
+            if doc.uri
+              Klass = @_uri_to_class doc.uri
+              new Klass doc.data, doc.uri, doc.links
+            else
+              Klass = @_path_to_class @path
+              new Klass doc, null, doc.links
           cb_post null, results
         else if body.count?
           cb_post null, body.count
@@ -179,8 +189,12 @@ module.exports = (auth, url_base='https://api.clever.com', options={}) ->
 
   class District extends Resource
     @path: '/v1.1/districts'
+  class DistrictAdmin extends Resource
+    @path: '/v1.1/district_admins'
   class School extends Resource
     @path: '/v1.1/schools'
+  class SchoolAdmin extends Resource
+    @path: '/v1.1/school_admins'
   class Section extends Resource
     @path: '/v1.1/sections'
   class Student extends Resource
@@ -193,7 +207,9 @@ module.exports = (auth, url_base='https://api.clever.com', options={}) ->
   _(clever).extend
     Resource : Resource
     District : District
+    DistrictAdmin : DistrictAdmin
     School   : School
+    SchoolAdmin : SchoolAdmin
     Section  : Section
     Student  : Student
     Teacher  : Teacher
