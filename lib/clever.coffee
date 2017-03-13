@@ -96,7 +96,7 @@ module.exports = (auth, url_base='https://api.clever.com', options={}) ->
       opts =
         method: 'get'
         uri: @_url
-        qs: if !_.isEmpty @_conditions then _({where: @_conditions}).extend @_options
+        qs: if _.isEmpty @_conditions then @_options else _({where: @_conditions}).extend @_options
         json: true
         ca: certs
       _(opts).extend(headers: options.headers) if options.headers
